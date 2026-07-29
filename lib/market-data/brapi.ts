@@ -15,7 +15,9 @@ export async function fetchQuotes(tickers: string[]): Promise<BrapiQuote[]> {
 
   const res = await fetch(url.toString(), { cache: "no-store" });
   if (!res.ok) {
-    throw new Error(`brapi.dev respondeu ${res.status}`);
+    const body = await res.json().catch(() => null);
+    const detalhe = body?.message ?? body?.error ?? null;
+    throw new Error(`brapi.dev respondeu ${res.status}${detalhe ? `: ${detalhe}` : ""}`);
   }
 
   const data = await res.json();
