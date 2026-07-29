@@ -1,4 +1,4 @@
-import { diasUteisNoMes } from "@/lib/business-days";
+import { diasUteisNoMes, diasUteisEntre } from "@/lib/business-days";
 
 interface SaldoDiario {
   data: Date;
@@ -19,12 +19,16 @@ export function serializeRendaFixaProduto(produto: ProdutoComSaldos) {
   const saldoAnterior = penultimo ? Number(penultimo.saldo) : null;
 
   let rendimentoDia: number | null = null;
+  let rendimentoPorDiaUtil: number | null = null;
   let rendimentoMesPercentual: number | null = null;
 
-  if (saldoAnterior !== null && saldoAnterior !== 0) {
+  if (ultimo && penultimo && saldoAnterior !== null && saldoAnterior !== 0) {
     rendimentoDia = saldoAtual - saldoAnterior;
-    const diasUteis = diasUteisNoMes(new Date());
-    rendimentoMesPercentual = ((rendimentoDia * diasUteis) / saldoAnterior) * 100;
+    const diasUteisDecorridos = diasUteisEntre(penultimo.data, ultimo.data);
+    rendimentoPorDiaUtil = rendimentoDia / diasUteisDecorridos;
+
+    const diasUteisMes = diasUteisNoMes(new Date());
+    rendimentoMesPercentual = ((rendimentoPorDiaUtil * diasUteisMes) / saldoAnterior) * 100;
   }
 
   return {
@@ -35,6 +39,7 @@ export function serializeRendaFixaProduto(produto: ProdutoComSaldos) {
     saldoAtual,
     dataUltimoSaldo: ultimo ? ultimo.data.toISOString().slice(0, 10) : null,
     rendimentoDia,
+    rendimentoPorDiaUtil,
     rendimentoMesPercentual,
   };
 }

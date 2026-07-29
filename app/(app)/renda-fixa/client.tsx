@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { Field, Input, Select, Btn } from "@/components/ui/form-field";
 import { PasteFillButton } from "@/components/ui/paste-fill-button";
 import { formatMoney, formatPercent, formatDate } from "@/lib/format";
+import { calcularProjecaoMensalRendaFixa } from "@/lib/renda-fixa-projecao";
 
 interface Produto {
   id: string;
@@ -17,6 +18,7 @@ interface Produto {
   saldoAtual: number;
   dataUltimoSaldo: string | null;
   rendimentoDia: number | null;
+  rendimentoPorDiaUtil: number | null;
   rendimentoMesPercentual: number | null;
 }
 
@@ -81,6 +83,7 @@ export function RendaFixaClient({
   }
 
   const totalPatrimonio = produtos.reduce((sum, p) => sum + p.saldoAtual, 0);
+  const projecao = calcularProjecaoMensalRendaFixa(produtos);
 
   return (
     <div>
@@ -98,6 +101,32 @@ export function RendaFixaClient({
           </div>
         }
       />
+
+      <div
+        className="rounded-xl border p-5 mb-6"
+        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      >
+        <p className="text-xs font-semibold tracking-wider uppercase mb-4" style={{ color: "var(--muted)" }}>
+          Projeção do mês — {projecao.mes}
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <ProjecaoItem label="Dias úteis no mês" value={String(projecao.diasUteisTotal)} />
+          <ProjecaoItem label="Dias já rendidos" value={String(projecao.diasUteisDecorridos)} />
+          <ProjecaoItem label="Dias restantes" value={String(projecao.diasUteisRestantes)} />
+          <ProjecaoItem label="Média diária" value={formatMoney(projecao.valorMedioRendimentoDiario)} />
+          <ProjecaoItem label="Estimado no mês" value={formatMoney(projecao.valorEstimadoMes)} color="var(--accent2)" />
+          <ProjecaoItem
+            label="Rendido até hoje"
+            value={formatMoney(projecao.valorAteDiaAtual)}
+            color="var(--emerald)"
+          />
+          <ProjecaoItem
+            label="Previsto até o fim do mês"
+            value={formatMoney(projecao.valorPrevistoRestante)}
+            color="var(--purple)"
+          />
+        </div>
+      </div>
 
       <DataTable
         columns={[
@@ -171,6 +200,19 @@ export function RendaFixaClient({
           onSubmit={handleNovoProduto}
         />
       )}
+    </div>
+  );
+}
+
+function ProjecaoItem({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div>
+      <div className="text-lg font-bold tabular-nums" style={{ color: color ?? "var(--bright)" }}>
+        {value}
+      </div>
+      <div className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
+        {label}
+      </div>
     </div>
   );
 }
