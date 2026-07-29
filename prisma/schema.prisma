@@ -89,9 +89,10 @@ model FiiCotacao {
   ativoId String   @map("ativo_id")
   ativo   FiiAtivo @relation(fields: [ativoId], references: [id], onDelete: Cascade)
   data    DateTime @db.Date
-  preco   Decimal  @db.Decimal(10, 2)
-  dyMes   Decimal? @db.Decimal(6, 4) @map("dy_mes")
-  fonte   String   @default("brapi")
+  preco    Decimal  @db.Decimal(10, 2)
+  dyMes    Decimal? @db.Decimal(6, 4) @map("dy_mes")
+  dyValor  Decimal? @db.Decimal(10, 4) @map("dy_valor")
+  fonte    String   @default("brapi")
 
   @@unique([ativoId, data])
   @@map("fii_cotacoes")

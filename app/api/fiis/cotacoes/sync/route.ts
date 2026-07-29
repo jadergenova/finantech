@@ -19,9 +19,14 @@ export async function POST() {
         quotes.map((q) => {
           const ativo = ativos.find((a) => a.ticker === q.symbol);
           if (!ativo) return Promise.resolve();
+          // Não inclui dyMes no update quando a brapi não retorna o dado (plano gratuito não
+          // libera dividendos) — evita apagar um DY que o usuário tenha lançado manualmente.
+          const dadosAtualizacao: { preco: number; dyMes?: number } = { preco: q.regularMarketPrice };
+          if (q.dividendYield !== undefined) dadosAtualizacao.dyMes = q.dividendYield;
+
           return prisma.fiiCotacao.upsert({
             where: { ativoId_data: { ativoId: ativo.id, data: new Date(hoje) } },
-            update: { preco: q.regularMarketPrice, dyMes: q.dividendYield ?? null },
+            update: dadosAtualizacao,
             create: {
               ativoId: ativo.id,
               data: new Date(hoje),

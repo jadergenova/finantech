@@ -7,6 +7,7 @@ interface Cotacao {
   data: Date;
   preco: unknown;
   dyMes: unknown;
+  dyValor: unknown;
 }
 
 interface AtivoComDados {
@@ -26,6 +27,7 @@ export function serializeFiiPosicao(ativo: AtivoComDados) {
   const ultimaCotacao = ativo.cotacoes[0];
   const precoAtual = ultimaCotacao ? Number(ultimaCotacao.preco) : precoMedio;
   const dyMes = ultimaCotacao?.dyMes != null ? Number(ultimaCotacao.dyMes) : null;
+  const dyValor = ultimaCotacao?.dyValor != null ? Number(ultimaCotacao.dyValor) : null;
 
   const valorAtual = precoAtual * qtdeCotas;
   const ganhoPerda = (precoAtual - precoMedio) * qtdeCotas;
@@ -42,6 +44,7 @@ export function serializeFiiPosicao(ativo: AtivoComDados) {
     valorAtual,
     ganhoPerda,
     dyMes,
+    dyValor,
     dataUltimaCotacao: ultimaCotacao ? ultimaCotacao.data.toISOString().slice(0, 10) : null,
   };
 }

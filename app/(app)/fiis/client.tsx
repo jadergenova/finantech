@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, RefreshCw, LineChart as LineChartIcon } from "lucide-react";
+import { Plus, RefreshCw, LineChart as LineChartIcon, Pencil } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -38,6 +38,7 @@ interface Posicao {
   valorAtual: number;
   ganhoPerda: number;
   dyMes: number | null;
+  dyValor: number | null;
   dataUltimaCotacao: string | null;
 }
 
@@ -47,6 +48,24 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [historicoPosicao, setHistoricoPosicao] = useState<Posicao | null>(null);
+  const [editDyPosicao, setEditDyPosicao] = useState<Posicao | null>(null);
+
+  async function refreshPosicoes() {
+    const res = await fetch("/api/fiis/ativos");
+    if (res.ok) setPosicoes(await res.json());
+  }
+
+  async function handleEditarDy(posicao: Posicao, dyMes: number, dyValor: number | null) {
+    const res = await fetch(`/api/fiis/ativos/${posicao.id}/dy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dyMes, dyValor }),
+    });
+    if (res.ok) {
+      setEditDyPosicao(null);
+      await refreshPosicoes();
+    }
+  }
 
   async function handleSync() {
     setSyncing(true);
@@ -130,7 +149,29 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
               </span>
             ),
           },
-          { key: "dy", header: "DY", align: "right", render: (p) => (p.dyMes === null ? "—" : formatPercent(p.dyMes)) },
+          {
+            key: "dy",
+            header: "DY",
+            align: "right",
+            render: (p) => (
+              <button
+                onClick={() => setEditDyPosicao(p)}
+                className="inline-flex flex-col items-end gap-0.5"
+                style={{ color: "var(--text)" }}
+                title="Editar DY manualmente"
+              >
+                <span className="inline-flex items-center gap-1">
+                  {p.dyMes === null ? "—" : formatPercent(p.dyMes)}
+                  <Pencil size={12} style={{ color: "var(--muted)" }} />
+                </span>
+                {p.dyValor !== null && (
+                  <span className="text-xs" style={{ color: "var(--muted)" }}>
+                    {formatMoney(p.dyValor)}/cota
+                  </span>
+                )}
+              </button>
+            ),
+          },
           {
             key: "dataCotacao",
             header: "Cotação de",
@@ -162,7 +203,51 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
       {historicoPosicao && (
         <HistoricoModal posicao={historicoPosicao} onClose={() => setHistoricoPosicao(null)} />
       )}
+
+      {editDyPosicao && (
+        <EditarDyModal posicao={editDyPosicao} onClose={() => setEditDyPosicao(null)} onSubmit={handleEditarDy} />
+      )}
     </div>
+  );
+}
+
+function EditarDyModal({
+  posicao,
+  onClose,
+  onSubmit,
+}: {
+  posicao: Posicao;
+  onClose: () => void;
+  onSubmit: (posicao: Posicao, dyMes: number, dyValor: number | null) => Promise<void>;
+}) {
+  const [dyMes, setDyMes] = useState(posicao.dyMes !== null ? String(posicao.dyMes) : "");
+  const [dyValor, setDyValor] = useState(posicao.dyValor !== null ? String(posicao.dyValor) : "");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    await onSubmit(posicao, Number(dyMes), dyValor ? Number(dyValor) : null);
+    setLoading(false);
+  }
+
+  return (
+    <Modal title={`Editar DY — ${posicao.ticker}`} onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <Field
+          label="DY do mês (%)"
+          hint="A brapi.dev não libera esse dado no plano gratuito — digite olhando no site do banco/corretora."
+        >
+          <Input type="number" step="0.01" value={dyMes} onChange={(e) => setDyMes(e.target.value)} required autoFocus />
+        </Field>
+        <Field label="Valor do último dividendo (R$ por cota)" hint="Opcional">
+          <Input type="number" step="0.0001" value={dyValor} onChange={(e) => setDyValor(e.target.value)} />
+        </Field>
+        <Btn type="submit" loading={loading} className="w-full">
+          Salvar
+        </Btn>
+      </form>
+    </Modal>
   );
 }
 
