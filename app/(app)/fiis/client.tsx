@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, RefreshCw, LineChart as LineChartIcon, Pencil } from "lucide-react";
+import { Plus, RefreshCw, LineChart as LineChartIcon, Pencil, Eye } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -49,6 +49,7 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
   const [syncError, setSyncError] = useState("");
   const [historicoPosicao, setHistoricoPosicao] = useState<Posicao | null>(null);
   const [editDyPosicao, setEditDyPosicao] = useState<Posicao | null>(null);
+  const [showNovoAtivo, setShowNovoAtivo] = useState(false);
 
   async function refreshPosicoes() {
     const res = await fetch("/api/fiis/ativos");
@@ -100,15 +101,31 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
     }
   }
 
+  async function handleNovoAtivo(ticker: string, segmento: string) {
+    const res = await fetch("/api/fiis/ativos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticker, segmento: segmento || undefined }),
+    });
+    if (res.ok) {
+      setShowNovoAtivo(false);
+      await refreshPosicoes();
+    }
+  }
+
   const valorTotalCarteira = posicoes.reduce((sum, p) => sum + p.valorAtual, 0);
+  const valorTotalAportado = posicoes.reduce((sum, p) => sum + p.valorTotalAportado, 0);
+  const ganhoPerdaTotal = posicoes.reduce((sum, p) => sum + p.ganhoPerda, 0);
 
   return (
     <div>
       <PageHeader
         title="FIIs"
-        description={`Valor da carteira: ${formatMoney(valorTotalCarteira)}`}
         action={
           <div className="flex gap-2">
+            <Btn variant="ghost" onClick={() => setShowNovoAtivo(true)}>
+              <Eye size={16} className="inline mr-1" /> Acompanhar ativo
+            </Btn>
             <Btn variant="ghost" onClick={handleSync} loading={syncing}>
               <RefreshCw size={16} className="inline mr-1" /> Atualizar cotações
             </Btn>
@@ -119,6 +136,36 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
         }
       />
 
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="rounded-xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+          <div className="text-xl font-extrabold tracking-tight tabular-nums" style={{ color: "var(--bright)" }}>
+            {formatMoney(valorTotalAportado)}
+          </div>
+          <div className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+            Valor aportado
+          </div>
+        </div>
+        <div className="rounded-xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+          <div className="text-xl font-extrabold tracking-tight tabular-nums" style={{ color: "var(--accent2)" }}>
+            {formatMoney(valorTotalCarteira)}
+          </div>
+          <div className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+            Valor atual
+          </div>
+        </div>
+        <div className="rounded-xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+          <div
+            className="text-xl font-extrabold tracking-tight tabular-nums"
+            style={{ color: ganhoPerdaTotal >= 0 ? "var(--emerald)" : "var(--red)" }}
+          >
+            {formatMoney(ganhoPerdaTotal)}
+          </div>
+          <div className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+            Ganho/Perda total
+          </div>
+        </div>
+      </div>
+
       {syncError && (
         <p className="text-sm mb-4" style={{ color: "var(--red)" }}>
           {syncError}
@@ -127,27 +174,56 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
 
       <DataTable
         columns={[
-          { key: "ticker", header: "Ticker", render: (p) => p.ticker },
+          {
+            key: "ticker",
+            header: "Ticker",
+            render: (p) =>
+              p.qtdeCotas === 0 ? (
+                <span className="inline-flex items-center gap-1.5" style={{ color: "var(--muted)" }}>
+                  <Eye size={12} /> {p.ticker}
+                </span>
+              ) : (
+                p.ticker
+              ),
+          },
           { key: "segmento", header: "Segmento", render: (p) => p.segmento ?? "—" },
-          { key: "qtde", header: "Cotas", align: "right", render: (p) => p.qtdeCotas.toLocaleString("pt-BR") },
+          {
+            key: "qtde",
+            header: "Cotas",
+            align: "right",
+            render: (p) => (p.qtdeCotas === 0 ? "—" : p.qtdeCotas.toLocaleString("pt-BR")),
+          },
           {
             key: "valorAportado",
             header: "Valor aportado",
             align: "right",
-            render: (p) => formatMoney(p.valorTotalAportado),
+            render: (p) => (p.qtdeCotas === 0 ? "—" : formatMoney(p.valorTotalAportado)),
           },
-          { key: "pm", header: "Preço médio", align: "right", render: (p) => formatMoney(p.precoMedio) },
+          {
+            key: "pm",
+            header: "Preço médio",
+            align: "right",
+            render: (p) => (p.qtdeCotas === 0 ? "—" : formatMoney(p.precoMedio)),
+          },
           { key: "atual", header: "Preço atual", align: "right", render: (p) => formatMoney(p.precoAtual) },
-          { key: "valorAtual", header: "Valor atual", align: "right", render: (p) => formatMoney(p.valorAtual) },
+          {
+            key: "valorAtual",
+            header: "Valor atual",
+            align: "right",
+            render: (p) => (p.qtdeCotas === 0 ? "—" : formatMoney(p.valorAtual)),
+          },
           {
             key: "ganhoPerda",
             header: "Ganho/Perda",
             align: "right",
-            render: (p) => (
-              <span style={{ color: p.ganhoPerda >= 0 ? "var(--emerald)" : "var(--red)" }}>
-                {formatMoney(p.ganhoPerda)}
-              </span>
-            ),
+            render: (p) =>
+              p.qtdeCotas === 0 ? (
+                "—"
+              ) : (
+                <span style={{ color: p.ganhoPerda >= 0 ? "var(--emerald)" : "var(--red)" }}>
+                  {formatMoney(p.ganhoPerda)}
+                </span>
+              ),
           },
           {
             key: "dy",
@@ -200,6 +276,8 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
 
       {showAporte && <NovoAporteModal onClose={() => setShowAporte(false)} onSubmit={handleNovoAporte} />}
 
+      {showNovoAtivo && <NovoAtivoModal onClose={() => setShowNovoAtivo(false)} onSubmit={handleNovoAtivo} />}
+
       {historicoPosicao && (
         <HistoricoModal posicao={historicoPosicao} onClose={() => setHistoricoPosicao(null)} />
       )}
@@ -208,6 +286,44 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
         <EditarDyModal posicao={editDyPosicao} onClose={() => setEditDyPosicao(null)} onSubmit={handleEditarDy} />
       )}
     </div>
+  );
+}
+
+function NovoAtivoModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (ticker: string, segmento: string) => Promise<void>;
+}) {
+  const [ticker, setTicker] = useState("");
+  const [segmento, setSegmento] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    await onSubmit(ticker, segmento);
+    setLoading(false);
+  }
+
+  return (
+    <Modal title="Acompanhar ativo" onClose={onClose}>
+      <form onSubmit={handleSubmit}>
+        <Field
+          label="Ticker"
+          hint="Pra já ir monitorando a cotação de um FII que você pretende comprar, sem lançar aporte ainda."
+        >
+          <Input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} required autoFocus />
+        </Field>
+        <Field label="Segmento" hint='Opcional. Ex: "Papel CDI", "Tijolo Shopping"'>
+          <Input value={segmento} onChange={(e) => setSegmento(e.target.value)} />
+        </Field>
+        <Btn type="submit" loading={loading} className="w-full">
+          Salvar
+        </Btn>
+      </form>
+    </Modal>
   );
 }
 
