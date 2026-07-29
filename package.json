@@ -6,7 +6,7 @@
     "dev": "next dev -p 3020",
     "postinstall": "prisma generate",
     "build": "next build",
-    "start": "next start",
+    "start": "prisma db push --schema=./prisma/schema.prisma --url=$DATABASE_URL --accept-data-loss; next start",
     "lint": "eslint",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
