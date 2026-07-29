@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model Instituicao {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  produtos RendaFixaProduto[]
+
+  @@map("instituicoes")
+}
+
+model RendaFixaProduto {
+  id            String      @id @default(uuid())
+  instituicaoId String      @map("instituicao_id")
+  instituicao   Instituicao @relation(fields: [instituicaoId], references: [id])
+  nome          String
+  indexador     String?
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  saldos RendaFixaSaldoDiario[]
+
+  @@unique([instituicaoId, nome])
+  @@index([instituicaoId])
+  @@map("renda_fixa_produtos")
+}
+
+model RendaFixaSaldoDiario {
+  id        String           @id @default(uuid())
+  produtoId String           @map("produto_id")
+  produto   RendaFixaProduto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  data      DateTime         @db.Date
+  saldo     Decimal          @db.Decimal(14, 2)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@unique([produtoId, data])
+  @@index([data])
+  @@map("renda_fixa_saldos_diarios")
+}
+
+model FiiAtivo {
+  id       String  @id @default(uuid())
+  ticker   String  @unique
+  nome     String?
+  segmento String?
+  isActive Boolean @default(true) @map("is_active")
+
+  aportes  FiiAporte[]
+  cotacoes FiiCotacao[]
+
+  @@map("fii_ativos")
+}
+
+model FiiAporte {
+  id            String   @id @default(uuid())
+  ativoId       String   @map("ativo_id")
+  ativo         FiiAtivo @relation(fields: [ativoId], references: [id], onDelete: Cascade)
+  dataAporte    DateTime @db.Date @map("data_aporte")
+  qtdeCotas     Decimal  @db.Decimal(12, 4) @map("qtde_cotas")
+  precoCompra   Decimal  @db.Decimal(10, 2) @map("preco_compra")
+  valorAportado Decimal  @db.Decimal(14, 2) @map("valor_aportado")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([ativoId])
+  @@map("fii_aportes")
+}
+
+model FiiCotacao {
+  id      String   @id @default(uuid())
+  ativoId String   @map("ativo_id")
+  ativo   FiiAtivo @relation(fields: [ativoId], references: [id], onDelete: Cascade)
+  data    DateTime @db.Date
+  preco   Decimal  @db.Decimal(10, 2)
+  dyMes   Decimal? @db.Decimal(6, 4) @map("dy_mes")
+  fonte   String   @default("brapi")
+
+  @@unique([ativoId, data])
+  @@map("fii_cotacoes")
+}
+
+model TaxaMercado {
+  id     String   @id @default(uuid())
+  indice String
+  data   DateTime @db.Date
+  valor  Decimal  @db.Decimal(8, 4)
+
+  @@unique([indice, data])
+  @@map("taxas_mercado")
+}
+
+model Cartao {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  transacoes CartaoTransacao[]
+
+  @@map("cartoes")
+}
+
+model CartaoTransacao {
+  id           String   @id @default(uuid())
+  cartaoId     String   @map("cartao_id")
+  cartao       Cartao   @relation(fields: [cartaoId], references: [id], onDelete: Cascade)
+  data         DateTime @db.Date
+  descricao    String
+  valor        Decimal  @db.Decimal(10, 2)
+  parcelaAtual Int?     @map("parcela_atual")
+  parcelaTotal Int?     @map("parcela_total")
+  chaveDedup   String   @unique @map("chave_dedup")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([cartaoId, data])
+  @@map("cartao_transacoes")
+}
+
+model ContaFixa {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lancamentos ContaFixaLancamento[]
+
+  @@map("contas_fixas")
+}
+
+model ContaFixaLancamento {
+  id            String    @id @default(uuid())
+  contaFixaId   String    @map("conta_fixa_id")
+  contaFixa     ContaFixa @relation(fields: [contaFixaId], references: [id], onDelete: Cascade)
+  mes           DateTime  @db.Date
+  valor         Decimal   @db.Decimal(10, 2)
+  pago          Boolean   @default(false)
+  dataPagamento DateTime? @db.Date @map("data_pagamento")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@unique([contaFixaId, mes])
+  @@index([mes])
+  @@map("conta_fixa_lancamentos")
+}
+
+model ContaCorrenteLancamento {
+  id        String   @id @default(uuid())
+  data      DateTime @db.Date
+  descricao String
+  valor     Decimal  @db.Decimal(10, 2)
+  ehReserva Boolean  @default(false) @map("eh_reserva")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([data])
+  @@map("conta_corrente_lancamentos")
+}
+
+model AppSettings {
+  id          String   @id @default("current")
+  nomeSistema String   @default("FinanTech") @map("nome_sistema")
+  logoBase64  String?  @db.Text @map("logo_base64")
+  temaPreset  String   @default("blue") @map("tema_preset")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
