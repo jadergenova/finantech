@@ -36,6 +36,7 @@ export function serializeFiiPosicao(ativo: AtivoComDados) {
     nome: ativo.nome,
     segmento: ativo.segmento,
     qtdeCotas,
+    valorTotalAportado,
     precoMedio,
     precoAtual,
     valorAtual,

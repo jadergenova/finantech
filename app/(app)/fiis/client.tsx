@@ -32,6 +32,7 @@ interface Posicao {
   nome: string | null;
   segmento: string | null;
   qtdeCotas: number;
+  valorTotalAportado: number;
   precoMedio: number;
   precoAtual: number;
   valorAtual: number;
@@ -110,6 +111,12 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
           { key: "ticker", header: "Ticker", render: (p) => p.ticker },
           { key: "segmento", header: "Segmento", render: (p) => p.segmento ?? "—" },
           { key: "qtde", header: "Cotas", align: "right", render: (p) => p.qtdeCotas.toLocaleString("pt-BR") },
+          {
+            key: "valorAportado",
+            header: "Valor aportado",
+            align: "right",
+            render: (p) => formatMoney(p.valorTotalAportado),
+          },
           { key: "pm", header: "Preço médio", align: "right", render: (p) => formatMoney(p.precoMedio) },
           { key: "atual", header: "Preço atual", align: "right", render: (p) => formatMoney(p.precoAtual) },
           { key: "valorAtual", header: "Valor atual", align: "right", render: (p) => formatMoney(p.valorAtual) },
@@ -231,9 +238,10 @@ function NovoAporteModal({
   const [dataAporte, setDataAporte] = useState(new Date().toISOString().slice(0, 10));
   const [qtdeCotas, setQtdeCotas] = useState("");
   const [precoCompra, setPrecoCompra] = useState("");
+  const [valorAportado, setValorAportado] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const valorAportado = Number(qtdeCotas || 0) * Number(precoCompra || 0);
+  const valorSugerido = Number(qtdeCotas || 0) * Number(precoCompra || 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -244,7 +252,7 @@ function NovoAporteModal({
       dataAporte,
       qtdeCotas: Number(qtdeCotas),
       precoCompra: Number(precoCompra),
-      valorAportado,
+      valorAportado: valorAportado ? Number(valorAportado) : valorSugerido,
     });
     setLoading(false);
   }
@@ -275,8 +283,28 @@ function NovoAporteModal({
         <Field label="Preço de compra (por cota)">
           <Input type="number" step="0.01" value={precoCompra} onChange={(e) => setPrecoCompra(e.target.value)} required />
         </Field>
-        <Field label="Valor total aportado">
-          <Input type="text" value={valorAportado ? valorAportado.toFixed(2) : ""} disabled />
+        <Field
+          label="Valor total aportado"
+          hint={
+            valorSugerido > 0
+              ? `Sugestão (qtde × preço): ${valorSugerido.toFixed(2)}. Ajuste se pagou taxas/corretagem.`
+              : undefined
+          }
+        >
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              step="0.01"
+              value={valorAportado}
+              onChange={(e) => setValorAportado(e.target.value)}
+              placeholder={valorSugerido > 0 ? valorSugerido.toFixed(2) : ""}
+            />
+            {valorSugerido > 0 && (
+              <Btn type="button" variant="ghost" onClick={() => setValorAportado(valorSugerido.toFixed(2))}>
+                Usar sugestão
+              </Btn>
+            )}
+          </div>
         </Field>
         <Btn type="submit" loading={loading} className="w-full">
           Salvar
