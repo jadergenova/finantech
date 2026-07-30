@@ -6,8 +6,6 @@ import bcrypt from "bcryptjs";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
-const HOJE = new Date().toISOString().slice(0, 10);
-
 // Extraído da aba "Resumo" de jaderfev21.xlsx (saldo do dia mais recente por produto).
 const RENDA_FIXA_SEED: { instituicao: string; produto: string; saldo: number }[] = [
   { instituicao: "Bradesco", produto: "Bradesco", saldo: 600 },
@@ -188,25 +186,6 @@ const RENDA_FIXA_HISTORICO_SEED: { produto: string; historico: { data: string; s
   },
 ];
 
-// FGTS: extraído da aba "FGTS" (mês/depósito/saldo acumulado oficial), últimos 13 lançamentos
-// a partir de dez/2025, a pedido do usuário (histórico mais antigo tinha rótulos de ano
-// inconsistentes na planilha e foi propositalmente deixado de fora).
-const FGTS_SEED: { mes: string; deposito: number; saldo: number }[] = [
-  { mes: "2025-12", deposito: 1550, saldo: 282628.88 },
-  { mes: "2026-01", deposito: 3600, saldo: 286327.88 },
-  { mes: "2026-02", deposito: 2500, saldo: 288942.88 },
-  { mes: "2026-03", deposito: 1550, saldo: 290622.88 },
-  { mes: "2026-04", deposito: 1550, saldo: 292317.88 },
-  { mes: "2026-05", deposito: 1550, saldo: 294029.88 },
-  { mes: "2026-06", deposito: 1550, saldo: 295759.88 },
-  { mes: "2026-07", deposito: 1550, saldo: 297509.88 },
-  { mes: "2026-08", deposito: 2550, saldo: 300279.88 },
-  { mes: "2026-09", deposito: 1550, saldo: 302069.88 },
-  { mes: "2026-10", deposito: 1550, saldo: 303879.88 },
-  { mes: "2026-11", deposito: 1550, saldo: 305709.88 },
-  { mes: "2026-12", deposito: 1550, saldo: 307559.88 },
-];
-
 // Extraído da tabela de FIIs da mesma aba (linhas com dados completos de aporte).
 // HGBS11 e KNHF11 apareciam na planilha sem valores de aporte completos — não importados.
 const FII_SEED: {
@@ -255,13 +234,8 @@ async function main() {
       update: {},
       create: { instituicaoId, nome: item.produto },
     });
-    await prisma.rendaFixaSaldoDiario.upsert({
-      where: { produtoId_data: { produtoId: produto.id, data: new Date(HOJE) } },
-      update: { saldo: item.saldo },
-      create: { produtoId: produto.id, data: new Date(HOJE), saldo: item.saldo },
-    });
   }
-  console.log(`${RENDA_FIXA_SEED.length} produtos de Renda Fixa importados.`);
+  console.log(`${RENDA_FIXA_SEED.length} produtos de Renda Fixa cadastrados.`);
 
   const produtoIdPorNome = new Map<string, string>();
   for (const item of RENDA_FIXA_SEED) {
@@ -286,16 +260,6 @@ async function main() {
     }
   }
   console.log(`${historicoCount} saldos históricos de Renda Fixa importados (ago/2025–jun/2026).`);
-
-  for (const item of FGTS_SEED) {
-    const mesData = new Date(`${item.mes}-01`);
-    await prisma.fgtsLancamento.upsert({
-      where: { mes: mesData },
-      update: { deposito: item.deposito, saldo: item.saldo },
-      create: { mes: mesData, deposito: item.deposito, saldo: item.saldo },
-    });
-  }
-  console.log(`${FGTS_SEED.length} lançamentos de FGTS importados (dez/2025–dez/2026).`);
 
   for (const item of FII_SEED) {
     const ativo = await prisma.fiiAtivo.upsert({
