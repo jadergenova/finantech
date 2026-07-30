@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
@@ -9,6 +18,14 @@ import { Field, Input, Select, Btn } from "@/components/ui/form-field";
 import { PasteFillButton } from "@/components/ui/paste-fill-button";
 import { formatMoney, formatPercent, formatDate } from "@/lib/format";
 import { calcularProjecaoMensalRendaFixa } from "@/lib/renda-fixa-projecao";
+
+const TOOLTIP_STYLE = {
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  color: "var(--bright)",
+  fontSize: 13,
+};
 
 interface Produto {
   id: string;
@@ -37,6 +54,7 @@ export function RendaFixaClient({
   const [produtos, setProdutos] = useState(initialProdutos);
   const [instituicoes, setInstituicoes] = useState(initialInstituicoes);
   const [saldoModalProduto, setSaldoModalProduto] = useState<Produto | null>(null);
+  const [historicoProduto, setHistoricoProduto] = useState<Produto | null>(null);
   const [showNovoProduto, setShowNovoProduto] = useState(false);
   const [showNovaInstituicao, setShowNovaInstituicao] = useState(false);
 
@@ -131,7 +149,20 @@ export function RendaFixaClient({
       <DataTable
         columns={[
           { key: "instituicao", header: "Instituição", render: (p) => p.instituicao.nome },
-          { key: "nome", header: "Produto", render: (p) => p.nome },
+          {
+            key: "nome",
+            header: "Produto",
+            render: (p) => (
+              <button
+                onClick={() => setHistoricoProduto(p)}
+                className="hover:underline text-left"
+                style={{ color: "var(--text)" }}
+                title="Ver detalhamento dos lançamentos"
+              >
+                {p.nome}
+              </button>
+            ),
+          },
           { key: "indexador", header: "Indexador", render: (p) => p.indexador ?? "—" },
           { key: "saldo", header: "Saldo atual", align: "right", render: (p) => formatMoney(p.saldoAtual) },
           {
@@ -187,6 +218,10 @@ export function RendaFixaClient({
           onClose={() => setSaldoModalProduto(null)}
           onSubmit={handleLancarSaldo}
         />
+      )}
+
+      {historicoProduto && (
+        <HistoricoModal produto={historicoProduto} onClose={() => setHistoricoProduto(null)} />
       )}
 
       {showNovaInstituicao && (
@@ -258,6 +293,126 @@ function LancarSaldoModal({
           Salvar
         </Btn>
       </form>
+    </Modal>
+  );
+}
+
+interface LancamentoSaldo {
+  id: string;
+  data: string;
+  saldo: number;
+  rendimento: number | null;
+  diasUteis: number | null;
+}
+
+function HistoricoModal({ produto, onClose }: { produto: Produto; onClose: () => void }) {
+  const [lancamentos, setLancamentos] = useState<LancamentoSaldo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function carregar() {
+    setLoading(true);
+    const res = await fetch(`/api/renda-fixa/saldos?produtoId=${produto.id}`);
+    if (res.ok) setLancamentos(await res.json());
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [produto.id]);
+
+  async function handleExcluir(id: string) {
+    if (!confirm("Excluir este lançamento?")) return;
+    const res = await fetch(`/api/renda-fixa/saldos/${id}`, { method: "DELETE" });
+    if (res.ok) await carregar();
+  }
+
+  const dadosGrafico = [...lancamentos].reverse();
+
+  return (
+    <Modal title={`Lançamentos — ${produto.instituicao.nome} · ${produto.nome}`} onClose={onClose}>
+      {loading ? (
+        <p className="text-sm" style={{ color: "var(--muted)" }}>
+          Carregando…
+        </p>
+      ) : lancamentos.length === 0 ? (
+        <p className="text-sm" style={{ color: "var(--muted)" }}>
+          Nenhum saldo lançado ainda pra esse produto.
+        </p>
+      ) : (
+        <>
+          {dadosGrafico.length >= 2 && (
+            <div className="mb-4">
+              <ResponsiveContainer width="100%" height={140}>
+                <LineChart data={dadosGrafico} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="data"
+                    tickFormatter={(v) => formatDate(v)}
+                    tick={{ fill: "var(--muted)", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis tick={{ fill: "var(--muted)", fontSize: 11 }} axisLine={false} tickLine={false} width={56} />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    formatter={(value) => formatMoney(Number(value))}
+                    labelFormatter={(label) => formatDate(label as string)}
+                  />
+                  <Line type="monotone" dataKey="saldo" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          <div className="max-h-80 overflow-y-auto overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                  <th className="py-2 text-left text-xs font-semibold uppercase" style={{ color: "var(--muted)" }}>
+                    Data
+                  </th>
+                  <th className="py-2 text-right text-xs font-semibold uppercase" style={{ color: "var(--muted)" }}>
+                    Saldo
+                  </th>
+                  <th className="py-2 text-right text-xs font-semibold uppercase" style={{ color: "var(--muted)" }}>
+                    Rendimento
+                  </th>
+                  <th className="py-2 text-right text-xs font-semibold uppercase" style={{ color: "var(--muted)" }}>
+                    Dias úteis
+                  </th>
+                  <th className="py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lancamentos.map((l) => (
+                  <tr key={l.id} className="border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
+                    <td className="py-2">{formatDate(l.data)}</td>
+                    <td className="py-2 text-right tabular-nums">{formatMoney(l.saldo)}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {l.rendimento === null ? (
+                        "—"
+                      ) : (
+                        <span style={{ color: l.rendimento >= 0 ? "var(--emerald)" : "var(--red)" }}>
+                          {formatMoney(l.rendimento)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right tabular-nums" style={{ color: "var(--muted)" }}>
+                      {l.diasUteis ?? "—"}
+                    </td>
+                    <td className="py-2 text-right">
+                      <button onClick={() => handleExcluir(l.id)} style={{ color: "var(--muted)" }} aria-label="Excluir">
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { diasUteisEntre } from "@/lib/business-days";
 
 const upsertSchema = z.object({
   produtoId: z.string().min(1),
@@ -47,5 +48,18 @@ export async function GET(req: NextRequest) {
     orderBy: { data: "asc" },
   });
 
-  return NextResponse.json(saldos.map((s) => ({ data: s.data.toISOString().slice(0, 10), saldo: Number(s.saldo) })));
+  let anterior: { data: Date; saldo: number } | null = null;
+  const lancamentos = saldos.map((s) => {
+    const saldo = Number(s.saldo);
+    let rendimento: number | null = null;
+    let diasUteis: number | null = null;
+    if (anterior) {
+      rendimento = saldo - anterior.saldo;
+      diasUteis = diasUteisEntre(anterior.data, s.data);
+    }
+    anterior = { data: s.data, saldo };
+    return { id: s.id, data: s.data.toISOString().slice(0, 10), saldo, rendimento, diasUteis };
+  });
+
+  return NextResponse.json(lancamentos.reverse());
 }
