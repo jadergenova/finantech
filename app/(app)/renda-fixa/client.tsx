@@ -135,15 +135,15 @@ export function RendaFixaClient({
           { key: "indexador", header: "Indexador", render: (p) => p.indexador ?? "—" },
           { key: "saldo", header: "Saldo atual", align: "right", render: (p) => formatMoney(p.saldoAtual) },
           {
-            key: "rendimentoPorDiaUtil",
-            header: "Rend. do dia",
+            key: "rendimentoDia",
+            header: "Rend. no período",
             align: "right",
             render: (p) =>
-              p.rendimentoPorDiaUtil === null ? (
+              p.rendimentoDia === null ? (
                 "—"
               ) : (
-                <span style={{ color: p.rendimentoPorDiaUtil >= 0 ? "var(--emerald)" : "var(--red)" }}>
-                  {formatMoney(p.rendimentoPorDiaUtil)}
+                <span style={{ color: p.rendimentoDia >= 0 ? "var(--emerald)" : "var(--red)" }}>
+                  {formatMoney(p.rendimentoDia)}
                 </span>
               ),
           },
