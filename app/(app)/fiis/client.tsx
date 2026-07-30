@@ -186,7 +186,18 @@ export function FiisClient({ initialPosicoes }: { initialPosicoes: Posicao[] }) 
                 p.ticker
               ),
           },
-          { key: "segmento", header: "Segmento", render: (p) => p.segmento ?? "—" },
+          {
+            key: "segmento",
+            header: "Segmento",
+            render: (p) =>
+              p.segmento ? (
+                <span className="block max-w-[160px] truncate" title={p.segmento}>
+                  {p.segmento}
+                </span>
+              ) : (
+                "—"
+              ),
+          },
           {
             key: "qtde",
             header: "Cotas",

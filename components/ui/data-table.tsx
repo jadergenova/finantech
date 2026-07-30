@@ -30,7 +30,7 @@ export function DataTable<T>({ columns, data, keyField, emptyMessage = "Nenhum r
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="px-4 py-3 text-xs font-semibold tracking-wider uppercase whitespace-nowrap"
+                className="px-3 py-2.5 text-xs font-semibold tracking-wide uppercase"
                 style={{ color: "var(--muted)", textAlign: col.align ?? "left" }}
               >
                 {col.header}
@@ -60,7 +60,7 @@ export function DataTable<T>({ columns, data, keyField, emptyMessage = "Nenhum r
                 }}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className="px-4 py-3 whitespace-nowrap" style={{ textAlign: col.align ?? "left" }}>
+                  <td key={col.key} className="px-3 py-2.5 whitespace-nowrap" style={{ textAlign: col.align ?? "left" }}>
                     {col.render(row)}
                   </td>
                 ))}
