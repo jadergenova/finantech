@@ -71,7 +71,7 @@ export function FgtsClient({ initialLancamentos }: { initialLancamentos: Lancame
         }
       />
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="rounded-xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
           <div className="text-xl font-extrabold tracking-tight tabular-nums" style={{ color: "var(--bright)" }}>
             {formatMoney(saldoAtual)}

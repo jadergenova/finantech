@@ -87,14 +87,14 @@ export function ContasFixasClient({
         title="Contas Fixas"
         description={`Total do mês: ${formatMoney(total)}`}
         action={
-          <div className="flex gap-2 items-end">
+          <>
             <Field label="Mês">
               <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} />
             </Field>
             <Btn onClick={() => setShowNovaConta(true)}>
               <Plus size={16} className="inline mr-1" /> Conta
             </Btn>
-          </div>
+          </>
         }
       />
 

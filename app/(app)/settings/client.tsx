@@ -83,7 +83,7 @@ export function SettingsClient({ initialSettings }: { initialSettings: Settings 
           <p className="text-sm mb-3" style={{ color: "var(--text)" }}>
             Tema
           </p>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {THEME_PRESETS.map((preset) => (
               <button
                 key={preset.id}

@@ -91,14 +91,14 @@ export function RendaFixaClient({
         title="Renda Fixa"
         description={`Patrimônio total: ${formatMoney(totalPatrimonio)}`}
         action={
-          <div className="flex gap-2">
+          <>
             <Btn variant="ghost" onClick={() => setShowNovaInstituicao(true)}>
               <Plus size={16} className="inline mr-1" /> Instituição
             </Btn>
             <Btn onClick={() => setShowNovoProduto(true)}>
               <Plus size={16} className="inline mr-1" /> Produto
             </Btn>
-          </div>
+          </>
         }
       />
 
